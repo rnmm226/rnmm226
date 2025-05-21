@@ -1,0 +1,59 @@
+from machine import ADC, I2C, Pin
+import ssd1306
+import time
+import math
+
+i2c = I2C(0, scl=Pin(1), sda=Pin(0))
+oled = ssd1306.SSD1306_I2C(128, 64, i2c)
+
+ldr = ADC(26)
+conversion_factor = 3.3 / 65535  
+
+DARK_THRESHOLD = 15000
+MEDIUM_THRESHOLD = 35000
+
+def read_light():
+    raw_value = ldr.read_u16()
+    voltage = raw_value * conversion_factor
+    return raw_value, voltage
+
+def display_light_status(raw_value, voltage):
+    oled.fill(0)
+    
+    if raw_value > MEDIUM_THRESHOLD:
+        status = "Bright"
+        icon = "☀️"
+    elif raw_value > DARK_THRESHOLD:
+        status = "Medium"
+        icon = "⛅"
+    else:
+        status = "Dark"
+        icon = "🌙"
+    
+    oled.text("LDR Sensor", 0, 0)
+    oled.text(f"Raw: {raw_value}", 0, 15)
+    oled.text(f"Volts: {voltage:.2f}V", 0, 25)
+    oled.text(f"Status: {status}", 0, 35)
+    oled.text(icon, 100, 35)  
+    
+    bar_length = math.floor(raw_value / 65535 * 120)
+    oled.rect(0, 50, 120, 10, 1)  
+    oled.fill_rect(0, 50, bar_length, 10, 1)  
+    
+    oled.show()
+
+def main():
+    try:
+        while True:
+            raw, volts = read_light()
+            display_light_status(raw, volts)
+            time.sleep(0.5) 
+            
+    except KeyboardInterrupt:
+        oled.fill(0)
+        oled.text("Program stopped", 0, 30)
+        oled.show()
+        print("Programme arrêté")
+
+if __name__ == "__main__":
+    main()
