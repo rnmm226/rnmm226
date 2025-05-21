@@ -1,0 +1,28 @@
+# include <stdio.h>
+# include <math.h>
+
+void distwithoutstrc(){
+	int xa,xb,ya,yb,res;
+	printf("donner les coordonner de A");
+	scanf("%d %d",&xa,&ya);
+	printf("donner les coordonner de B");
+	scanf("%d %d",&xb,&yb);
+	res=pow(xb-xa,2)+pow(yb-ya,2);
+	printf("A (%d,%d) et B (%d,%d) \n la distance est = %d",xa,ya,xb,yb,res);
+}
+
+struct Point {
+	int x;
+	int y; 
+};
+void distwithstrc(){
+    struct Point A,B;
+	int res;
+	printf("donner les coordonner de A");
+	scanf("%d %d",&A.x,&A.y);
+	printf("donner les coordonner de B");
+	scanf("%d %d",&B.x,&B.y);
+	res=pow(B.x-A.x,2)+pow(B.y-A.y,2);
+	printf("la distance est = %d",res); 
+}
+
