@@ -1,0 +1,32 @@
+# include <stdio.h>
+# include <math.h>
+struct Etudiant {
+	char nom[20];
+	char prenom[40];
+	float moy;
+};
+
+main(){
+	struct Etudiant T[100];
+	int n ;
+	do{
+    printf("donner le nombre des etudiants");
+    scanf("%d",&n);
+    }while(n<1 || n>100);
+    
+    for (int i=0;i<n;i++){
+    	printf("Etudiant Num : %d \n Donner son nom",i+1);
+    	scanf("%s",T[i].nom);
+    	printf("Donner son prenom");
+    	scanf("%s",T[i].prenom);
+    	printf("Donner son moy");
+    	scanf("%f",&T[i].moy); 	
+	}
+	
+	for (int i=0;i<n;i++){
+		if(T[i].moy>10){
+			printf("%s ",T[i].nom);
+		}
+
+	}
+}
