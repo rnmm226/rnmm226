@@ -1,0 +1,302 @@
+import tkinter as tk
+from tkinter import ttk, messagebox, filedialog
+import csv
+from datetime import datetime
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import webbrowser
+
+
+class AdvancedIMCCalculator:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("🚀 Calculateur d'IMC Premium")
+        self.root.geometry("800x600")
+        self.setup_ui()
+        self.history_file = "historique_imc_advanced.csv"
+        self.setup_history_file()
+
+    def setup_ui(self):
+        # Style
+        style = ttk.Style()
+        style.configure('TFrame', background='#f0f0f0')
+        style.configure('TLabel', background='#f0f0f0', font=('Helvetica', 10))
+        style.configure('TButton', font=('Helvetica', 10))
+
+        # Main Frame
+        main_frame = ttk.Frame(self.root, padding="10")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Input Frame
+        input_frame = ttk.Frame(main_frame)
+        input_frame.pack(pady=10, fill=tk.X)
+
+        ttk.Label(input_frame, text="Poids (kg):").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+        self.weight_entry = ttk.Entry(input_frame)
+        self.weight_entry.grid(row=0, column=1, padx=5, pady=5)
+
+        ttk.Label(input_frame, text="Taille (m):").grid(row=1, column=0, padx=5, pady=5, sticky=tk.W)
+        self.height_entry = ttk.Entry(input_frame)
+        self.height_entry.grid(row=1, column=1, padx=5, pady=5)
+
+        # Button Frame
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(pady=10)
+
+        ttk.Button(button_frame, text="Calculer IMC", command=self.calculate_imc).grid(row=0, column=0, padx=5)
+        ttk.Button(button_frame, text="Afficher Historique", command=self.show_history).grid(row=0, column=1, padx=5)
+        ttk.Button(button_frame, text="Graphique d'Évolution",
+                   command=self.show_trend_chart).grid(row=0, column=2, padx=5)
+        ttk.Button(button_frame, text="Conseils Santé", command=self.show_health_tips).grid(row=0, column=3, padx=5)
+        ttk.Button(button_frame, text="Exporter Données", command=self.export_data).grid(row=0, column=4, padx=5)
+
+        # Results Frame
+        results_frame = ttk.Frame(main_frame)
+        results_frame.pack(pady=10, fill=tk.BOTH, expand=True)
+
+        self.result_text = tk.Text(results_frame, height=10, wrap=tk.WORD)
+        self.result_text.pack(fill=tk.BOTH, expand=True)
+
+        # Chart Frame
+        self.chart_frame = ttk.Frame(main_frame)
+        self.figure, self.ax = plt.subplots(figsize=(6, 3))
+        self.canvas = FigureCanvasTkAgg(self.figure, master=self.chart_frame)
+        self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+    def setup_history_file(self):
+        try:
+            with open(self.history_file, 'x', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow(["Date", "Poids (kg)", "Taille (m)", "IMC", "Catégorie", "Notes"])
+        except FileExistsError:
+            pass
+
+    def calculate_imc(self):
+        try:
+            weight = float(self.weight_entry.get())
+            height = float(self.height_entry.get())
+
+            if weight <= 0 or height <= 0:
+                messagebox.showerror("Erreur", "Les valeurs doivent être positives !")
+                return
+
+            imc = weight / (height ** 2)
+            category = self.classify_imc(imc)
+            bmi_scale = self.get_bmi_scale_position(imc)
+
+            result = (
+                f"📊 Résultats IMC :\n"
+                f"• Poids: {weight} kg\n"
+                f"• Taille: {height} m\n"
+                f"• IMC: {imc:.1f}\n"
+                f"• Catégorie: {category}\n"
+                f"• Échelle: [{bmi_scale}]\n\n"
+                f"{self.get_health_advice(category)}"
+            )
+
+            self.result_text.delete(1.0, tk.END)
+            self.result_text.insert(tk.END, result)
+
+            # Save to history
+            self.save_to_history(weight, height, imc, category)
+
+        except ValueError:
+            messagebox.showerror("Erreur", "Entrez des nombres valides !")
+
+    def classify_imc(self, imc):
+        if imc < 16.5:
+            return "Dénutrition"
+        elif 16.5 <= imc < 18.5:
+            return "Maigreur"
+        elif 18.5 <= imc < 25:
+            return "Poids normal"
+        elif 25 <= imc < 30:
+            return "Surpoids"
+        elif 30 <= imc < 35:
+            return "Obésité modérée"
+        elif 35 <= imc < 40:
+            return "Obésité sévère"
+        else:
+            return "Obésité morbide"
+
+    def get_bmi_scale_position(self, imc):
+        scale = ["16.5", "18.5", "25", "30", "35", "40"]
+        markers = ["D", "M", "N", "S", "O1", "O2", "O3"]
+
+        position = []
+        for i, threshold in enumerate([16.5, 18.5, 25, 30, 35, 40]):
+            if imc < threshold:
+                position = markers[i]
+                break
+        else:
+            position = markers[-1]
+
+        scale_str = "|".join(scale)
+        return f"{scale_str} ← Vous êtes ici ({position})"
+
+    def get_health_advice(self, category):
+        advice = {
+            "Dénutrition": "⚠️ Consultation médicale urgente recommandée",
+            "Maigreur": "💡 Consultez un nutritionniste pour un régime adapté",
+            "Poids normal": "✅ Maintenez vos bonnes habitudes alimentaires",
+            "Surpoids": "🏃 Augmentez votre activité physique progressivement",
+            "Obésité modérée": "👨‍⚕️ Consultation médicale recommandée",
+            "Obésité sévère": "🏥 Programme de suivi médical nécessaire",
+            "Obésité morbide": "🆘 Prise en charge médicale urgente requise"
+        }
+        return f"💡 Conseil santé :\n{advice.get(category, '')}"
+
+    def save_to_history(self, weight, height, imc, category):
+        note = simpledialog.askstring("Notes", "Ajoutez des notes (optionnel):")
+        with open(self.history_file, 'a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow([
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                weight,
+                height,
+                f"{imc:.1f}",
+                category,
+                note or ""
+            ])
+
+    def show_history(self):
+        try:
+            with open(self.history_file, 'r') as file:
+                reader = csv.reader(file)
+                history = list(reader)
+
+                if len(history) <= 1:
+                    messagebox.showinfo("Historique", "Aucun historique disponible")
+                    return
+
+                # Create a new window for history display
+                history_window = tk.Toplevel(self.root)
+                history_window.title("Historique Complet")
+
+                # Treeview widget
+                tree = ttk.Treeview(history_window)
+                tree["columns"] = history[0]
+                tree["show"] = "headings"
+
+                for col in history[0]:
+                    tree.heading(col, text=col)
+                    tree.column(col, width=100)
+
+                for row in history[1:]:
+                    tree.insert("", tk.END, values=row)
+
+                tree.pack(expand=True, fill=tk.BOTH)
+
+        except FileNotFoundError:
+            messagebox.showerror("Erreur", "Fichier d'historique introuvable")
+
+    def show_trend_chart(self):
+        try:
+            dates = []
+            bmis = []
+
+            with open(self.history_file, 'r') as file:
+                reader = csv.DictReader(file)
+                for row in reader:
+                    dates.append(datetime.strptime(row['Date'], "%Y-%m-%d %H:%M:%S"))
+                    bmis.append(float(row['IMC']))
+
+            if len(dates) < 2:
+                messagebox.showinfo("Info", "Pas assez de données pour un graphique")
+                return
+
+            self.ax.clear()
+            self.ax.plot(dates, bmis, marker='o', linestyle='-')
+            self.ax.set_title("Évolution de votre IMC")
+            self.ax.set_ylabel("IMC")
+            self.ax.grid(True)
+            self.figure.autofmt_xdate()
+
+            # Add healthy range
+            self.ax.axhspan(18.5, 25, color='green', alpha=0.1)
+            self.ax.axhline(18.5, color='green', linestyle='--', alpha=0.5)
+            self.ax.axhline(25, color='green', linestyle='--', alpha=0.5)
+
+            self.chart_frame.pack(fill=tk.BOTH, expand=True)
+            self.canvas.draw()
+
+        except Exception as e:
+            messagebox.showerror("Erreur", f"Erreur lors de la création du graphique : {str(e)}")
+
+    def show_health_tips(self):
+        tips_window = tk.Toplevel(self.root)
+        tips_window.title("Conseils Santé par Catégorie IMC")
+
+        tips = {
+            "Dénutrition": [
+                "- Consultation médicale urgente",
+                "- Régime hypercalorique sous supervision",
+                "- Supplémentation nutritionnelle"
+            ],
+            "Maigreur": [
+                "- Augmentation progressive des apports caloriques",
+                "- Activité physique modérée pour développer la masse musculaire",
+                "- Éviter les régimes restrictifs"
+            ],
+            "Poids normal": [
+                "- Maintenir une alimentation équilibrée",
+                "- 150 minutes d'activité physique modérée par semaine",
+                "- Surveillance annuelle de l'IMC"
+            ],
+            "Surpoids": [
+                "- Réduction modérée des apports caloriques",
+                "- 300 minutes d'activité physique par semaine",
+                "- Limitation des graisses saturées et sucres simples"
+            ],
+            "Obésité modérée": [
+                "- Programme de perte de poids supervisé",
+                "- Prise en charge multidisciplinaire",
+                "- Activité physique adaptée"
+            ],
+            "Obésité sévère": [
+                "- Consultation endocrinologique",
+                "- Évaluation des comorbidités",
+                "- Programme intensif de modification du mode de vie"
+            ],
+            "Obésité morbide": [
+                "- Prise en charge médicale urgente",
+                "- Évaluation pour chirurgie bariatrique",
+                "- Suivi psychologique"
+            ]
+        }
+
+        notebook = ttk.Notebook(tips_window)
+
+        for category, advice_list in tips.items():
+            frame = ttk.Frame(notebook)
+            text = tk.Text(frame, wrap=tk.WORD)
+            text.pack(fill=tk.BOTH, expand=True)
+
+            for advice in advice_list:
+                text.insert(tk.END, f"• {advice}\n")
+
+            text.config(state=tk.DISABLED)
+            notebook.add(frame, text=category)
+
+        notebook.pack(fill=tk.BOTH, expand=True)
+
+    def export_data(self):
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[("Fichiers CSV", "*.csv"), ("Tous les fichiers", "*.*")],
+            title="Exporter les données"
+        )
+
+        if file_path:
+            try:
+                with open(self.history_file, 'r') as source, open(file_path, 'w') as target:
+                    target.write(source.read())
+                messagebox.showinfo("Succès", f"Données exportées vers {file_path}")
+            except Exception as e:
+                messagebox.showerror("Erreur", f"Échec de l'export : {str(e)}")
+
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = AdvancedIMCCalculator(root)
+    root.mainloop()
